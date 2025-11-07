@@ -1,6 +1,7 @@
-#define DEBUG 
+#include <Servo.h> 
 
- 
+
+#define DEBUG 
 
 #ifdef DEBUG 
 
@@ -16,32 +17,25 @@
 
 #endif 
 
- 
 
-const int buttonPin = 4;          
+const int potPin = A0;   
+const int servoPin = 4;  
 
-unsigned long previousMillis = 0; 
-
-unsigned long interval = 3000;     
-
-bool ledState = false; 
-
-bool fastMode = false; 
-
-unsigned long fastModeStart = 0; 
-
- 
+Servo myServo; 
 
 void setup() { 
 
-  pinMode(LED_BUILTIN, OUTPUT); 
+  #ifdef DEBUG 
 
-  pinMode(buttonPin, INPUT_PULLUP); 
-  Serial.begin(9600); 
+    Serial.begin(9600); 
 
-  while (!Serial); 
+    while (!Serial);  
 
-  DEBUG_PRINTLN("Programm gestartet."); 
+    DEBUG_PRINTLN("Servo-Test gestartet"); 
+
+  #endif 
+
+  myServo.attach(servoPin); 
 
 } 
 
@@ -49,47 +43,19 @@ void setup() {
 
 void loop() { 
 
-  unsigned long currentMillis = millis(); 
+  int potValue = analogRead(potPin);     
+  int angle = map(potValue, 0, 1023, 5, 175); 
 
-  if (digitalRead(buttonPin) == HIGH) {   
+  myServo.write(angle);                  
 
-    fastMode = true; 
+  DEBUG_PRINT("Pot: "); 
 
-    fastModeStart = currentMillis; 
+  DEBUG_PRINT(potValue); 
 
-    interval = 500;   
+  DEBUG_PRINT("  → Servo: "); 
 
-    DEBUG_PRINTLN("Taster gedrückt → Schnellmodus aktiv"); 
-    delay(200);
+  DEBUG_PRINTLN(angle); 
 
-  } 
-
- 
-  if (fastMode && (currentMillis - fastModeStart >= 60000)) { 
-
-    fastMode = false; 
-
-    interval = 3000;  
-
-    DEBUG_PRINTLN("Schnellmodus beendet"); 
-
-  } 
-
- 
-
-
-  if (currentMillis - previousMillis >= interval) { 
-
-    previousMillis = currentMillis; 
-
-    ledState = !ledState; 
-
-    digitalWrite(LED_BUILTIN, ledState ? HIGH : LOW); 
-
-    DEBUG_PRINT("Millis: "); 
-
-    DEBUG_PRINTLN(currentMillis); 
-
-  } 
+  delay(50);  
 
 } 
