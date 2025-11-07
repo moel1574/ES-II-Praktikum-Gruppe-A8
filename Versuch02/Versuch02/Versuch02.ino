@@ -1,14 +1,57 @@
+#define DEBUG    
+
+#ifdef DEBUG 
+
+  #define DEBUG_PRINT(x)    Serial.print(x) 
+
+  #define DEBUG_PRINTLN(x)  Serial.println(x) 
+
+#else 
+
+  #define DEBUG_PRINT(x) 
+
+  #define DEBUG_PRINTLN(x) 
+
+#endif 
+
+ 
+
 void setup() { 
 
-  pinMode(LED_BUILTIN, OUTPUT);   
+  pinMode(LED_BUILTIN, OUTPUT); 
+
+ 
+
+  #ifdef DEBUG 
+
+    Serial.begin(9600);               
+
+    while (!Serial) ;                 
+
+    DEBUG_PRINTLN("Programm gestartet."); 
+
+  #endif 
 
 } 
 
  
 
 void loop() { 
-  static bool ledState = false;   
-  ledState = !ledState;           
-  digitalWrite(LED_BUILTIN, ledState ? HIGH : LOW);
+
+  static bool ledState = false; 
+
+  ledState = !ledState; 
+
+  digitalWrite(LED_BUILTIN, ledState ? HIGH : LOW); 
+
+
+  unsigned long currentTime = millis(); 
+
+  DEBUG_PRINT("Millis seit Start: "); 
+
+  DEBUG_PRINTLN(currentTime); 
+
   delay(3000); 
+
 } 
+// alle paar Durchläufe bekommt das ganze eine VErspätung von 1 milli s
