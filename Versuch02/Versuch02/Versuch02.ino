@@ -1,0 +1,14 @@
+void setup() { 
+
+  pinMode(LED_BUILTIN, OUTPUT);   
+
+} 
+
+ 
+
+void loop() { 
+  static bool ledState = false;   
+  ledState = !ledState;           
+  digitalWrite(LED_BUILTIN, ledState ? HIGH : LOW);
+  delay(3000); 
+} 
