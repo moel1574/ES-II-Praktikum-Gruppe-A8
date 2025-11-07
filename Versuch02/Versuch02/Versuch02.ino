@@ -1,4 +1,6 @@
-#define DEBUG    
+#define DEBUG 
+
+ 
 
 #ifdef DEBUG 
 
@@ -16,21 +18,30 @@
 
  
 
+const int buttonPin = 4;          
+
+unsigned long previousMillis = 0; 
+
+unsigned long interval = 3000;     
+
+bool ledState = false; 
+
+bool fastMode = false; 
+
+unsigned long fastModeStart = 0; 
+
+ 
+
 void setup() { 
 
   pinMode(LED_BUILTIN, OUTPUT); 
 
- 
+  pinMode(buttonPin, INPUT_PULLUP); 
+  Serial.begin(9600); 
 
-  #ifdef DEBUG 
+  while (!Serial); 
 
-    Serial.begin(9600);               
-
-    while (!Serial) ;                 
-
-    DEBUG_PRINTLN("Programm gestartet."); 
-
-  #endif 
+  DEBUG_PRINTLN("Programm gestartet."); 
 
 } 
 
@@ -38,20 +49,47 @@ void setup() {
 
 void loop() { 
 
-  static bool ledState = false; 
+  unsigned long currentMillis = millis(); 
 
-  ledState = !ledState; 
+  if (digitalRead(buttonPin) == HIGH) {   
 
-  digitalWrite(LED_BUILTIN, ledState ? HIGH : LOW); 
+    fastMode = true; 
+
+    fastModeStart = currentMillis; 
+
+    interval = 500;   
+
+    DEBUG_PRINTLN("Taster gedrückt → Schnellmodus aktiv"); 
+    delay(200);
+
+  } 
+
+ 
+  if (fastMode && (currentMillis - fastModeStart >= 60000)) { 
+
+    fastMode = false; 
+
+    interval = 3000;  
+
+    DEBUG_PRINTLN("Schnellmodus beendet"); 
+
+  } 
+
+ 
 
 
-  unsigned long currentTime = millis(); 
+  if (currentMillis - previousMillis >= interval) { 
 
-  DEBUG_PRINT("Millis seit Start: "); 
+    previousMillis = currentMillis; 
 
-  DEBUG_PRINTLN(currentTime); 
+    ledState = !ledState; 
 
-  delay(3000); 
+    digitalWrite(LED_BUILTIN, ledState ? HIGH : LOW); 
+
+    DEBUG_PRINT("Millis: "); 
+
+    DEBUG_PRINTLN(currentMillis); 
+
+  } 
 
 } 
-// alle paar Durchläufe bekommt das ganze eine VErspätung von 1 milli s
