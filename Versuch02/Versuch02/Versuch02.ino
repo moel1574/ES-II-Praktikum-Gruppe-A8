@@ -1,62 +1,38 @@
+#include <Wire.h> 
+
+#include "rgb_lcd.h" 
+
 #include <math.h> 
-
-
-#define DEBUG 
-
-#ifdef DEBUG 
-
-  #define DEBUG_PRINT(x)    Serial.print(x) 
-
-  #define DEBUG_PRINTLN(x)  Serial.println(x) 
-
-#else 
-
-  #define DEBUG_PRINT(x) 
-
-  #define DEBUG_PRINTLN(x) 
-
-#endif 
 
  
 
-#define ARDUINO_DUE 
+// --- Konstanten für den Temperatursensor --- 
 
-#if defined(ARDUINO_DUE) 
+const int pinTempSensor = A0;        // Analogeingang 
 
-  const float ADCMax = 4095.0; 
+const unsigned int B = 4275;         // B-Wert des Thermistors (lt. Datenblatt) 
 
-#else 
+const float R0 = 100000.0;           // Referenzwiderstand 100 kΩ 
 
-  const float ADCMax = 1023.0; 
+const float T0 = 298.15;             // 25 °C in Kelvin (25 + 273.15) 
 
-#endif 
+const float ADCMax = 1023.0;         // 10-Bit-ADC (0…1023) 
 
+ 
 
+rgb_lcd lcd;                         // LCD-Objekt 
 
-const int pinTempSensor = A0;       // Analog-Pin 
-
-const unsigned int B = 4275;        // B-Wert des Thermistors (abhängig vom Sensor) 
-
-const float R0 = 100000.0;          // Referenzwiderstand (z. B. 100kΩ beim Grove-Modul) 
-
-const float T0 = 298.15;            // 25 °C in Kelvin 
-
-int value = 0;
-
-float R = R0 * ((ADCMax / value) - 1.0); 
  
 
 void setup() { 
 
-  #ifdef DEBUG 
+  Serial.begin(9600); 
 
-    Serial.begin(9600); 
+  lcd.begin(16, 2);                  
 
-    while (!Serial); 
+  lcd.setRGB(0, 128, 255);           
 
-    DEBUG_PRINTLN("Temperatursensor gestartet"); 
-
-  #endif 
+  lcd.print("Temperatur:"); 
 
 } 
 
@@ -64,28 +40,33 @@ void setup() {
 
 void loop() { 
 
-  value = analogRead(pinTempSensor);     
+  int value = analogRead(pinTempSensor); 
 
-  float R = R0 * ((1023.0 / value) - 1.0);  
+  float R = R0 * (ADCMax / value - 1.0); 
 
-  float tempK = 1.0 / (log(R / R0) / B + (1.0 / T0));   
+  float tempK = 1.0 / (log(R / R0) / B + 1.0 / T0); 
 
-  float tempC = tempK - 273.15;                        
+  float tempC = tempK - 273.15;  
+
+  Serial.print("ADC: "); Serial.print(value); 
+
+  Serial.print("  Temp: "); Serial.print(tempC, 2); Serial.println(" °C"); 
 
 
+  lcd.setCursor(0, 1);               
 
-  DEBUG_PRINT("ADC: "); 
+  lcd.print("                ");     
 
-  DEBUG_PRINT(value); 
+  lcd.setCursor(0, 1); 
 
-  DEBUG_PRINT("  R_NTC: "); 
+  lcd.print(tempC, 1);                
 
-  DEBUG_PRINT(R); 
+  lcd.print(" "); 
 
-  DEBUG_PRINT(" Ohm  → Temp: "); 
+  lcd.write((unsigned char)223);      
 
-  DEBUG_PRINTLN(tempC); 
+  lcd.print("C"); 
 
-  delay(1000); 
+  delay(1000);                       
 
 } 
