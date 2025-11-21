@@ -1,0 +1,179 @@
+#include <math.h>
+#include <Wire.h>
+#include <rgb_lcd.h>
+#include <Arduino.h>
+#include <Servo.h>
+
+// DEBUG-Makro (ein- oder ausschalten)
+#define DEBUG
+#ifdef DEBUG
+#define DEBUG_PRINT(x) Serial.print(x)
+#define DEBUG_PRINTLN(x) Serial.println(x)
+#else
+#define DEBUG_PRINT(x)
+#define DEBUG_PRINTLN(x)
+#endif
+
+// green board
+#if defined(ARDUINO_ARCH_SAM)
+#define ADC_RESOLUTION 12
+#define MAX_VOLTAGE 3300
+#define SETRES(x) analogReadResolution(x)
+#define WireMaster Wire1
+// red board
+#elif defined(ARDUINO_ARCH_AVR)
+#define ADC_RESOLUTION 10
+#define MAX_VOLTAGE 5000
+#define SETRES(x)
+#define WireMaster Wire
+// untested
+#else
+#error "Wrong Hardware"
+#endif
+
+const unsigned long ADCMax = (1UL << ADC_RESOLUTION) - 1UL;
+
+// --- LED ---
+unsigned long currenttime = 0;
+unsigned long previoustime = 0;
+int LEDPORT = LED_BUILTIN;
+
+// --- usb / serial ---
+unsigned long t = 0;
+unsigned long start = 0;
+unsigned long previousMillises = 0;
+
+// --- button ---
+const int buttonPin = 2;
+unsigned long starttime = 0;
+const long duration = 60000;
+const long interval = 500;
+unsigned long previousMillis = 0;
+volatile int a = 0; // von ISR gesetzte Flag (volatile)
+int but = 0;
+
+// --- pot / servo ---
+int potentioPort = A3;
+int servoPort = A0;
+Servo servo1;
+
+// --- lcd ---
+rgb_lcd lcd;
+
+// --- temp sensor ---
+const int tempPort = A2;
+const int B = 4275;               // B value of the thermistor
+const int R0 = 100000;
+
+void setup() {
+ pinMode(LEDPORT, OUTPUT);
+ pinMode(buttonPin, INPUT_PULLUP);
+
+ Serial.begin(9600);
+ // set ADC resolution if needed
+ SETRES(ADC_RESOLUTION);
+
+ attachInterrupt(digitalPinToInterrupt(buttonPin), buttonISR, FALLING);
+ servo1.attach(servoPort);
+
+ // lcd init (WireMaster wird je nach Board gesetzt)
+ lcd.begin(16, 2, LCD_5x8DOTS, WireMaster);
+ lcd.setRGB(255, 0, 0);
+
+ previousMillis = 0;
+ previoustime = millis();
+ start = 0;
+}
+
+void loop() {
+ if (start == 0) {
+   start = millis();
+ }
+
+ unsigned long startMillis = millis();
+ if (startMillis - previousMillises >= 1000) {
+   previousMillises = startMillis;
+   DEBUG_PRINT("Time passed since start : ");
+   DEBUG_PRINTLN(startMillis - start);
+ }
+
+ // LED: toggle alle 3000 ms
+ currenttime = millis();
+ if (currenttime - previoustime >= 3000) {
+   previoustime = currenttime;
+   digitalWrite(LEDPORT, !digitalRead(LEDPORT));
+ }
+
+ // Button-Logik: bei kurz-gedrücktem Taster für 'duration' alle 'interval' Aktionen
+ if (a == 1) {
+   // aus ISR gesetzt
+   starttime = millis();
+   but = 1;
+   a = 0;
+   previousMillis = 0;
+ }
+
+ if (but == 1) {
+   unsigned long currentmillis = millis();
+   if (currentmillis - starttime >= (unsigned long)duration) {
+     // Minute vorbei
+     DEBUG_PRINTLN(currentmillis - starttime);
+     but = 0;
+   } else {
+     if (currentmillis - previousMillis >= (unsigned long)interval) {
+       if (previousMillis == 0) {
+         DEBUG_PRINTLN("Button Pressed");
+         previousMillis = currentmillis;
+       } else {
+         DEBUG_PRINT(currentmillis - starttime);
+         DEBUG_PRINTLN(" ms since button start");
+         previousMillis = currentmillis;
+       }
+     }
+   }
+ }
+
+ // Potentiometer -> Servo
+ int val = analogRead(potentioPort); // 0 .. ADCMax
+ // map von 0..ADCMax auf 5..175 (keine Anschläge)
+ long servoPosition = map(val, 0, (long)ADCMax, 5, 175);
+ // safety clamp
+ if (servoPosition < 5) servoPosition = 5;
+ if (servoPosition > 175) servoPosition = 175;
+ servo1.write((int)servoPosition);
+
+ // Temperatur messen und auf LCD
+ int c = analogRead(tempPort);
+ float temperature = NAN;
+ if (c > 0) {
+   float ratio = (float)ADCMax / (float)c - 1.0;
+   float R = R0 * ratio;
+   temperature = 1.0 / (log(R / (float)R0) / (float)B + 1.0 / 298.15) - 273.15;
+ } else {
+   // Schutz vor Division durch Null
+   DEBUG_PRINTLN("Temp sensor read 0 -> skipping calc");
+ }
+
+ // LCD Ausgabe
+ lcd.setCursor(0, 0);
+ lcd.print("Temp ist:      "); // clear line a bit
+ lcd.setCursor(0, 1);
+ if (!isnan(temperature)) {
+   // mit 1 Dezimalstelle
+   char buf[10];
+   dtostrf(temperature, 4, 1, buf);
+   lcd.print(buf);
+   lcd.print(char(0xdf)); // Gradsymbol
+   lcd.print("C  ");
+   DEBUG_PRINT("Temp: ");
+   DEBUG_PRINT(temperature);
+   DEBUG_PRINTLN(" C");
+ } else {
+   lcd.print("err      ");
+ }
+}
+
+void buttonISR() {
+ // nur Flag setzen — minimaler ISR-Aufwand
+ a = 1;
+}
