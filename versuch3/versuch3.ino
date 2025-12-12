@@ -2,7 +2,7 @@
 #include <Servo.h>
 #include <Wire.h>
 #include "rgb_lcd.h"
-
+//das hier ist ein neuer kommentar
 #define DEBUG
 
 #if defined(ARDUINO_ARCH_SAM)
@@ -18,7 +18,7 @@
   #error "Wrong Hardware"
 #endif
 
-#define timeOverflow 20000
+#define timeOverflow 20000 
 
 Scheduler runner;
 
